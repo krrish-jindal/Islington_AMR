@@ -5,58 +5,26 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
-from ebot_docking.srv import DockSw
-from linkattacher_msgs.srv import AttachLink, DetachLink
 import yaml
 import os
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 from nav_msgs.msg import Odometry
 import time
+from geometry_msgs.msg import Quaternion
+from tf_transformations import quaternion_from_euler
 
 class NavigationController(Node):
 
 	def __init__(self):
+		
 		rclpy.init()  # Initialize rclpy here
 		super().__init__('nav_dock')
 
-		self.attach = self.create_client(srv_type=AttachLink, srv_name='/ATTACH_LINK')
-		self.detach = self.create_client(srv_type=DetachLink, srv_name='/DETACH_LINK')
-		self.client_docking = self.create_client(srv_type=DockSw, srv_name='dock_control')
 		self.vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
 		self.vel_msg = Twist()
 		self.navigator = BasicNavigator()
-		self.flag=False
 		self.robot_pose = [0, 0]
-
-
-
-	def send_request(self, orientation):
-		request_dock = DockSw.Request()
-		request_dock.orientation_dock = True
-		request_dock.orientation = orientation
-		future = self.client_docking.call_async(request_dock)
-		rclpy.spin_until_future_complete(self, future)
-		return future.result()
-
-	def rack_attach(self, rack):
-		req = AttachLink.Request()
-		req.model1_name = 'ebot'
-		req.link1_name = 'ebot_base_link'
-		req.model2_name = rack
-		req.link2_name = 'link'
-
-		atc = self.attach.call_async(req)
-		rclpy.spin_until_future_complete(self, atc)
-		self.vel_msg.linear.x = 0.2
-		self.vel_pub.publish(self.vel_msg)
-		time.sleep(2)
-		self.vel_msg.linear.x = 0.0
-		self.vel_pub.publish(self.vel_msg)
-		return atc.result()
-	
-
-
 
 	def nav_reach(self, goal):
 		while not self.navigator.isTaskComplete():
@@ -75,159 +43,79 @@ class NavigationController(Node):
 		else:
 			print('Goal has an invalid return status!')
 
-	def rack_detach(self, rack):
-		req = DetachLink.Request()
-		req.model1_name = 'ebot'
-		req.link1_name = 'ebot_base_link'
-		req.model2_name = rack
-		req.link2_name = 'link'
-
-		dtc = self.detach.call_async(req)
-		rclpy.spin_until_future_complete(self, dtc)
-		self.vel_msg.linear.x = 0.2
-		self.vel_pub.publish(self.vel_msg)
-		time.sleep(2)
-		self.vel_msg.linear.x = 0.0
-		self.vel_pub.publish(self.vel_msg)
-		return dtc.result()
-
-
-	def navigate_and_dock(self, goal_pick, goal_drop, goal_int, orientation_rack, rack,bot_coordinates):
-		self.navigator.goToPose(goal_pick)
-		self.nav_reach(goal_pick)
-
-		self.send_request(orientation_rack)
-		self.rack_attach(rack)
-		self.navigator.goToPose(goal_int)
-		self.nav_reach(goal_int)
-		self.navigator.goToPose(goal_drop)
-		self.nav_reach(goal_drop)
-		self.rack_detach(rack)
-
-		
-	# def navigate_and_dock(self, goal_pick, goal_drop, orientation_rack, rack,bot_coordinates):
-	#     self.navigator.goToPose(goal_pick)
-	#     self.nav_reach(goal_pick)
-	#     # self.correct(bot_coordinates)
-	#     print("POSE----",self.robot_pose)
-	#     if self.flag == False:
-	#         self.send_request(orientation_rack)
-	#         self.rack_attach(rack)
-	#         self.navigator.goToPose(goal_drop)
-	#         self.nav_reach(goal_drop)
-	#         self.rack_detach(rack)        
-
-
+	def nav_theta(self,angle):		
+		x,y,z,w=quaternion_from_euler(0,0,angle)
+		return (x,y,z,w)
+	
 	def main(self):
-		package_name = 'ebot_nav2'
+		package_name = 'islington_nav2'
 		config = "config/config.yaml"
 
-		ebot_nav2_dir = get_package_share_directory('ebot_nav2')
+		islington_nav2_dir = get_package_share_directory('islington_nav2')
 
 		pkg_share = FindPackageShare(package=package_name).find(package_name)
 		config_path = os.path.join(pkg_share, config)
 		with open(config_path, 'r') as infp:
-			pos_rack = infp.read()
+			pos_goal = infp.read()
 
-		data_dict = yaml.safe_load(pos_rack)
+		data_dict = yaml.safe_load(pos_goal)
 
 		positions = data_dict['position']
-		rack1_coordinates = positions[0]['rack1']
-		rack2_coordinates = positions[1]['rack2']
-		rack3_coordinates = positions[2]['rack3']
-		package_id = data_dict['package_id'][0]
+		goal1_coordinates = positions[0]['goal1']
+		goal2_coordinates = positions[1]['goal2']
+		goal3_coordinates = positions[2]['goal3']
 
-		orientation_rack_1 = rack1_coordinates[2]
-		orientation_rack_2 = rack2_coordinates[2]
-		orientation_rack_3 = rack3_coordinates[2]
-		rack_list = ["rack1", "rack2", "rack3"]
+		goal_theta_1=self.nav_theta(goal1_coordinates[2])
+		goal_theta_2=self.nav_theta(goal2_coordinates[2])
+		goal_theta_3=self.nav_theta(goal3_coordinates[2])
+		
+		goal_list = ["goal1", "goal2", "goal3"]
 
 		goal_pick_1 = PoseStamped()
 		goal_pick_1.header.frame_id = 'map'
 		goal_pick_1.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_pick_1.pose.position.x = 0.108200
-		goal_pick_1.pose.position.y = rack1_coordinates[1]
-		goal_pick_1.pose.orientation.x = 0.0
-		goal_pick_1.pose.orientation.y = 0.0
-		goal_pick_1.pose.orientation.z = 0.7077099
-		goal_pick_1.pose.orientation.w = 0.7065031
-
-		# Define other goals...
-		goal_drop_int = PoseStamped()
-		goal_drop_int.header.frame_id = 'map'
-		goal_drop_int.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_drop_int.pose.position.x = -0.2
-		goal_drop_int.pose.position.y = -2.5
-		goal_drop_int.pose.orientation.x = 0.0
-		goal_drop_int.pose.orientation.y = 0.0
-		goal_drop_int.pose.orientation.z = 0.9999997
-		goal_drop_int.pose.orientation.w = 0.0007963
-
-		goal_drop_1 = PoseStamped()
-		goal_drop_1.header.frame_id = 'map'
-		goal_drop_1.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_drop_1.pose.position.x = 1.15
-		goal_drop_1.pose.position.y = -2.455
-		goal_drop_1.pose.orientation.x = 0.0
-		goal_drop_1.pose.orientation.y = 0.0
-		goal_drop_1.pose.orientation.z = 0.9999997
-		goal_drop_1.pose.orientation.w = 0.0007963
-
-
+		goal_pick_1.pose.position.x = goal1_coordinates[0]
+		goal_pick_1.pose.position.y = goal1_coordinates[1]
+		goal_pick_1.pose.orientation.x = goal_theta_1[0]
+		goal_pick_1.pose.orientation.y = goal_theta_1[1]
+		goal_pick_1.pose.orientation.z = goal_theta_1[2]
+		goal_pick_1.pose.orientation.w = goal_theta_1[3]
+		
+		
 		goal_pick_2 = PoseStamped()
 		goal_pick_2.header.frame_id = 'map'
-		goal_pick_2.pose.position.x = 1.960219
-		goal_pick_2.pose.position.y = 2.118804
-		goal_pick_2.pose.orientation.x = 0.0
-		goal_pick_2.pose.orientation.y = 0.0
-		goal_pick_2.pose.orientation.z = 0.0
-		goal_pick_2.pose.orientation.w = 1.0
+		goal_pick_2.header.stamp = self.navigator.get_clock().now().to_msg()
+		goal_pick_2.pose.position.x = goal2_coordinates[0]
+		goal_pick_2.pose.position.y = goal2_coordinates[1]
+		goal_pick_2.pose.orientation.x = goal_theta_2[0]
+		goal_pick_2.pose.orientation.y = goal_theta_2[1]
+		goal_pick_2.pose.orientation.z = goal_theta_2[2]
+		goal_pick_2.pose.orientation.w = goal_theta_2[3]
+
 
 		goal_pick_3 = PoseStamped()
 		goal_pick_3.header.frame_id = 'map'
 		goal_pick_3.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_pick_3.pose.position.x = 1.998759
-		goal_pick_3.pose.position.y = -7.102119
-		goal_pick_3.pose.orientation.x = 0.0
-		goal_pick_3.pose.orientation.y = 0.0
-		goal_pick_3.pose.orientation.z = 0.0
-		goal_pick_3.pose.orientation.w = 1.0
+		goal_pick_3.pose.position.x = goal3_coordinates[0]
+		goal_pick_3.pose.position.y = goal3_coordinates[1]
+		goal_pick_3.pose.orientation.x = goal_theta_3[0]
+		goal_pick_3.pose.orientation.y = goal_theta_3[1]
+		goal_pick_3.pose.orientation.z = goal_theta_3[2]
+		goal_pick_3.pose.orientation.w = goal_theta_3[3]
 
-
-
-		goal_drop_2 = PoseStamped()
-		goal_drop_2.header.frame_id = 'map'
-		goal_drop_2.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_drop_2.pose.position.x = 1.650000
-		goal_drop_2.pose.position.y = -3.684832
-		goal_drop_2.pose.orientation.x = 0.0
-		goal_drop_2.pose.orientation.y = 0.0
-		goal_drop_2.pose.orientation.z =  -0.70398
-		goal_drop_2.pose.orientation.w =  0.7102198
-
-		goal_drop_3 = PoseStamped()
-		goal_drop_3.header.frame_id = 'map'
-		goal_drop_3.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_drop_3.pose.position.x =1.550000
-		goal_drop_3.pose.position.y = -1.298586
-		goal_drop_3.pose.orientation.x = 0.0
-		goal_drop_3.pose.orientation.y = 0.0
-		goal_drop_3.pose.orientation.z =  0.6921004
-		goal_drop_3.pose.orientation.w = 0.7218012 
 
 
 		# Define other drop goals...
 
 		self.navigator.waitUntilNav2Active()
+		self.navigator.goToPose(goal_pick_1)
+		self.nav_reach(goal_list[0])
 
-		if package_id == 3:
-			self.navigate_and_dock(goal_pick_3, goal_drop_1, goal_drop_int, orientation_rack_3, rack_list[2],rack3_coordinates[0])
-		elif package_id == 2:
-			# Navigate for package_id 2
-			pass
-		else:
-			# Navigate for package_id 1
-			pass
+		self.navigator.goToPose(goal_pick_2)
+		self.nav_reach(goal_list[1])
+		
+		self.navigator.goToPose(goal_pick_3)
+		self.nav_reach(goal_list[2])
 
 		exit(0)
 

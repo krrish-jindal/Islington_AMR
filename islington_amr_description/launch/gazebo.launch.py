@@ -22,10 +22,10 @@ def generate_launch_description():
   world_file_path = 'world/bookstore.world'
   
   # Pose where we want to spawn the robot
-  spawn_x_val = '-2.462106'
-  spawn_y_val = '5.777113'
+  spawn_x_val = '-1.928008'
+  spawn_y_val = '5.098231'
   spawn_z_val = '0.019008'
-  spawn_yaw_val = '-1.57'
+  spawn_yaw_val = '-1.825072'
  
   ############ You do not need to change anything below this line #############
    
@@ -95,9 +95,9 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0', '0', '0',
-            '-1.57', '0', '0', # No rotation for static transform
-            'world', 'odom'
+            '-1.928008', '5.098231', '0.019008',
+            '0.0', '0', '0.0', # No rotation for static transform
+            'world', 'map'
         ],
         output='screen'
     )
