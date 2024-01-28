@@ -95,9 +95,9 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '-1.928008', '5.098231', '0.019008',
-            '0.0', '0', '0.0', # No rotation for static transform
-            'world', 'map'
+            '0.0', '0.0', '0.0',
+            '0.0', '0', '2.09', # No rotation for static transform
+            'map', 'world'
         ],
         output='screen'
     )

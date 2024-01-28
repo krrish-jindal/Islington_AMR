@@ -43,10 +43,10 @@ amcl:
     always_reset_initial_pose: False
     first_map_only: False
     initial_pose:
-      x: -2.457237
-      y: 5.768451 
-      z: 0.019013
-      yaw: 2.139492
+      x: -1.928008
+      y: 5.09823 
+      z: 0.019008
+      yaw: -1.825072
 
 amcl_map_client:
   ros__parameters:
@@ -207,7 +207,7 @@ local_costmap:
       plugins: ["voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 0.7
+        cost_scaling_factor: 1.0
         inflation_radius: 0.4
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
@@ -270,8 +270,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.45
+        cost_scaling_factor: 0.7
+        inflation_radius: 0.35
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:
