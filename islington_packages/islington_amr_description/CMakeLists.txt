@@ -18,6 +18,7 @@ install(
     world
     models
     map
+    hooks
   DESTINATION
     share/${PROJECT_NAME}/
 )
@@ -32,5 +33,5 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 ament_package()
