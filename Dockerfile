@@ -1,78 +1,90 @@
-# Use cuda_version arg to take CUDA version as input from user
+# Use cuda_version arg to take CUDA version as input from the user
 ARG cuda_version=11.8.0
 
-# Use NVIDA-CUDA's base image
+# Use NVIDIA-CUDA's base image
 FROM nvcr.io/nvidia/cuda:${cuda_version}-devel-ubuntu22.04 
 
 # Prevent console from interacting with the user
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Prevent hash mismatch error for apt-get update, qqq makes the terminal quiet while downloading pkgs
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get update -yqqq
+# Combine apt-get update and upgrade
+RUN apt-get update -yqqq && \
+    apt-get upgrade -y --with-new-pkgs
 
-# Set folder for RUNTIME_DIR. Only to prevent warnings when running RViz2 and Gz
-RUN mkdir tmp/runtime-root && chmod 0700 tmp/runtime-root
-ENV XDG_RUNTIME_DIR='/tmp/runtime-root'
-
-RUN apt-get update
-
+# Install essential packages
 RUN apt-get install --no-install-recommends -yqqq \
     apt-utils \
     nano \
-    git 
+    git \
+    python3-pip \
+    locales \
+    software-properties-common \
+    curl \
+    wget \
+    gnupg2 \
+    lsb-release \
+    terminator \
+    build-essential \
+    cmake \
+    libusb-1.0-0-dev \
+    libxinerama-dev \
+    libpython3-dev \
+    xorg-dev\
+    mesa-utils
 
-# Using shell to use bash commands like 'source'
-SHELL ["/bin/bash", "-c"]
-
-# Python Dependencies
-RUN apt-get install --no-install-recommends -yqqq \
-    python3-pip
-
-
+# Set folder for RUNTIME_DIR. Only to prevent warnings when running RViz2 and Gz
+RUN mkdir -p tmp/runtime-root && chmod 0700 tmp/runtime-root
+ENV XDG_RUNTIME_DIR='/tmp/runtime-root'
 
 # Add locale
-RUN locale  && \
-    apt update && apt install --no-install-recommends -yqqq locales && \
+RUN locale && \
     locale-gen en_US en_US.UTF-8 && \
     update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 && \
-    export LANG=en_US.UTF-8 && \
-    locale  
+    export LANG=en_US.UTF-8
 
-# Setup the sources
-RUN apt-get update && apt-get install --no-install-recommends -yqqq software-properties-common curl && \
-    add-apt-repository universe && \
+# Setup the sources for ROS 2 Humble
+RUN add-apt-repository universe && \
     curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/nul
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
+RUN curl -sSL http://get.gazebosim.org | sh
+
+# Install dependencies for Fast-RTPS and Cyclone DDS
+RUN apt-get install -y libasio-dev libtinyxml2-dev libcunit1-dev libxcb-xinerama0 libx11-xcb1
 # Install ROS 2 Humble
-RUN apt update && apt install --no-install-recommends -yqqq \
-    ros-humble-ros-base \
-    ros-dev-tools
 
-# Install cv-bridge
-RUN apt update && apt install --no-install-recommends -yqqq \
-    ros-humble-cv-bridge
+RUN apt-get update -yqqq && \
+    apt-get install -y locales ros-humble-ros-base ros-dev-tools ros-humble-cv-bridge ros-humble-navigation2 ros-humble-nav2-bringup ccache lcov lld  ros-humble-xacro  ros-humble-rviz2 ros-humble-gazebo-ros-pkgs
+#  export DISPLAY=localhost:0
 
-# Target workspace for ROS2 packages
+# Upgrade pip and install colcon-common-extensions
+RUN pip3 install --no-cache-dir -U pip setuptools colcon-common-extensions
+
+# Install additional developer dependencies
+RUN apt-get install -y bash-completion gdb && \
+    pip3 install bottle glances
+
+
+# Install some additional dependencies
+# RUN apt-get install -y libflann-dev libvtk6-dev libvtk6-qt-dev libpcap-dev libboost-filesystem-dev libboost-iostreams-dev libboost-system-dev libboost-date-time-dev
+
+# Set up ROS 2 environment
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/humble/setup.sh
+RUN echo "export GAZEBO_MODEL_PATH=/usr/share/gazebo-11/models" >> /root/.bashrc
+RUN echo "export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:$WORKSPACE/src/islington_packages/islington_amr_description/world/model" >> /root/.bashrc
+
+# Clone navigation2 repository
 ARG WORKSPACE=/root/islington_ws
-
-# Add target workspace in environment
 ENV WORKSPACE=$WORKSPACE
-
-# Creating the models folder
 RUN mkdir -p $WORKSPACE/src
+COPY islington_packages/ $WORKSPACE/src/
 
-
-# ROS Dependencies
-RUN apt update && apt install --no-install-recommends -yqqq \
-    ros-humble-cyclonedds \
-    ros-humble-rmw-cyclonedds-cpp
-
-# Use cyclone DDS by default
-ENV RMW_IMPLEMENTATION rmw_cyclonedds_cpp
-
-WORKDIR /root/islington_ws
-
+# Build ROS 2 packages
+WORKDIR $WORKSPACE/
+RUN source /opt/ros/humble/setup.sh && colcon build
 # Update .bashrc
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN echo "source $WORKSPACE/install/setup.bash" >> /root/.bashrc
 
+# ros-humble-joint-state-publisher ros-humble-robot-state-publisher
