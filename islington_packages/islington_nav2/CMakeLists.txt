@@ -41,6 +41,7 @@ install(
     launch
     maps
     params
+    config
   DESTINATION
     share/${PROJECT_NAME}/
 )

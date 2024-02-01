@@ -54,7 +54,7 @@ RUN apt-get install -y libasio-dev libtinyxml2-dev libcunit1-dev libxcb-xinerama
 # Install ROS 2 Humble
 
 RUN apt-get update -yqqq && \
-    apt-get install -y locales ros-humble-ros-base ros-dev-tools ros-humble-cv-bridge ros-humble-navigation2 ros-humble-nav2-bringup ccache lcov lld  ros-humble-xacro  ros-humble-rviz2 ros-humble-gazebo-ros-pkgs
+    apt-get install -y locales ros-humble-ros-base ros-dev-tools ros-humble-cv-bridge ros-humble-navigation2 ros-humble-nav2-bringup ccache lcov lld  ros-humble-xacro  ros-humble-rviz2 ros-humble-gazebo-ros-pkgs ros-humble-tf-transformations
 #  export DISPLAY=localhost:0
 
 # Upgrade pip and install colcon-common-extensions
@@ -62,8 +62,8 @@ RUN pip3 install --no-cache-dir -U pip setuptools colcon-common-extensions
 
 # Install additional developer dependencies
 RUN apt-get install -y bash-completion gdb && \
-    pip3 install bottle glances
-
+    pip3 install bottle glances &&\
+    pip3 install transforms3d
 
 # Install some additional dependencies
 # RUN apt-get install -y libflann-dev libvtk6-dev libvtk6-qt-dev libpcap-dev libboost-filesystem-dev libboost-iostreams-dev libboost-system-dev libboost-date-time-dev
@@ -79,6 +79,10 @@ ARG WORKSPACE=/root/islington_ws
 ENV WORKSPACE=$WORKSPACE
 RUN mkdir -p $WORKSPACE/src
 COPY islington_packages/ $WORKSPACE/src/
+COPY new.sh $WORKSPACE/src/
+
+WORKDIR $WORKSPACE/src
+RUN chmod +x new.sh
 
 # Build ROS 2 packages
 WORKDIR $WORKSPACE/
