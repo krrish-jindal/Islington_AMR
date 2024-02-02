@@ -5,9 +5,6 @@
 1. Follow the official Docker installation guide for Ubuntu [here](https://docs.docker.com/engine/install/ubuntu/).
 2. Perform post-installation steps as outlined [here](https://docs.docker.com/engine/install/linux-postinstall/).
 
-## Installing NVIDIA Toolkit:
-
-- Refer to the NVIDIA Container Toolkit installation guide [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to install the toolkit on your host system.
 
 ## Cloning Git Repository:
 
@@ -17,10 +14,23 @@
    git clone git@github.com:krrish-jindal/Islington_AMR.git
    cd Islington_AMR
    ```
-## Build the Docker image
+## Build the Docker image FOR Raspberry
 
-   ```bash
-docker build -t my_image .
+```bash
+docker build -t my_image -f Dockerfile.raspberry .
+```
+
+
+## Installing NVIDIA Toolkit for CUDA supported device:
+
+- Refer to the NVIDIA Container Toolkit installation guide [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to install the toolkit on your host system.
+
+## Build the Docker image for CUDA support device
+
+**_NOTE:_**  Install above dependencies on host machine before building 
+
+```bash
+docker build -t my_image -f Dockerfile.cuda .
 ```
 
 ## Run the provided script
@@ -34,10 +44,10 @@ docker build -t my_image .
    ```bash
 ./new.sh
 ```
+
 ## Open new terminal and run this
 
 ```bash
-
 docker ps 
 docker exec -it <Containter_ID_From_Above> bash
 ```
