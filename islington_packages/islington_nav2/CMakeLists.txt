@@ -56,6 +56,8 @@ install(PROGRAMS
 )
 install(PROGRAMS
   scripts/islington_nav_cmd.py
+  scripts/my_odom.py
+
   DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

@@ -52,6 +52,12 @@ docker ps
 docker exec -it <Containter_ID_From_Above> bash
 ```
 
+## To create new bot coordinate file 
+
+   ```bash
+ros2 run islington_nav2 my_odom.py
+```
+
 ## To run point-to-point navigation run this
 
    ```bash

@@ -13,6 +13,7 @@ from nav_msgs.msg import Odometry
 import time
 from geometry_msgs.msg import Quaternion
 from tf_transformations import quaternion_from_euler
+from visualization_msgs.msg import MarkerArray, Marker
 
 class NavigationController(Node):
 
@@ -23,6 +24,9 @@ class NavigationController(Node):
 
 		self.vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
 		self.vel_msg = Twist()
+		self.marker_pub = self.create_publisher(MarkerArray, '/visualization_marker_array', 10)
+		self.marker_array = MarkerArray()
+
 		self.navigator = BasicNavigator()
 		self.robot_pose = [0, 0]
 
@@ -47,77 +51,85 @@ class NavigationController(Node):
 		x,y,z,w=quaternion_from_euler(0,0,angle)
 		return (x,y,z,w)
 	
+	def publish_marker(self, x, y, label):
+		marker = Marker()
+		marker.header.frame_id = "map"
+		marker.header.stamp = self.get_clock().now().to_msg()
+		marker.type = Marker.TEXT_VIEW_FACING
+		marker.action = Marker.ADD
+		marker.pose.position.x = x
+		marker.pose.position.y = y
+		marker.pose.position.z = 0.0
+		marker.scale.x = 1.0
+		marker.scale.y = 1.0
+		marker.scale.z = 1.0
+		marker.color.a = 1.0  # Fully opaque
+		marker.color.r = 1.0
+		marker.color.g = 1.0
+		marker.color.b = 1.0
+		marker.text = label
+
+	
 	def main(self):
 		package_name = 'islington_nav2'
-		config = "config/config.yaml"
-
-		islington_nav2_dir = get_package_share_directory('islington_nav2')
-
+		config = "config/config_1.yaml"
 		pkg_share = FindPackageShare(package=package_name).find(package_name)
 		config_path = os.path.join(pkg_share, config)
 		with open(config_path, 'r') as infp:
 			pos_goal = infp.read()
-
 		data_dict = yaml.safe_load(pos_goal)
 
-		positions = data_dict['position']
-		goal1_coordinates = positions[0]['goal1']
-		goal2_coordinates = positions[1]['goal2']
-		goal3_coordinates = positions[2]['goal3']
 
-		goal_theta_1=self.nav_theta(goal1_coordinates[2])
-		goal_theta_2=self.nav_theta(goal2_coordinates[2])
-		goal_theta_3=self.nav_theta(goal3_coordinates[2])
-		
-		goal_list = ["goal1", "goal2", "goal3"]
+		# for entry in data_dict['odometry_data']:
+		# 	place = entry['place']
+		# 	pose = entry['pose']
+		# 	position_x = pose['position']['x']
+		# 	position_y = pose['position']['y']
+		# 	orientation_yaw = pose['orientation']['yaw']
 
-		goal_pick_1 = PoseStamped()
-		goal_pick_1.header.frame_id = 'map'
-		goal_pick_1.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_pick_1.pose.position.x = goal1_coordinates[0]
-		goal_pick_1.pose.position.y = goal1_coordinates[1]
-		goal_pick_1.pose.orientation.x = goal_theta_1[0]
-		goal_pick_1.pose.orientation.y = goal_theta_1[1]
-		goal_pick_1.pose.orientation.z = goal_theta_1[2]
-		goal_pick_1.pose.orientation.w = goal_theta_1[3]
-		
-		
-		goal_pick_2 = PoseStamped()
-		goal_pick_2.header.frame_id = 'map'
-		goal_pick_2.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_pick_2.pose.position.x = goal2_coordinates[0]
-		goal_pick_2.pose.position.y = goal2_coordinates[1]
-		goal_pick_2.pose.orientation.x = goal_theta_2[0]
-		goal_pick_2.pose.orientation.y = goal_theta_2[1]
-		goal_pick_2.pose.orientation.z = goal_theta_2[2]
-		goal_pick_2.pose.orientation.w = goal_theta_2[3]
+		# 	print(f"Publishing marker for place: {place}")
+		# 	self.publish_marker(position_x, position_y, place)  # Change this line
+
+		# 	marker = self.publish_marker(position_x, position_y, place)
+		# 	self.marker_array.markers.append(marker)
+		# self.marker_pub.publish(self.marker_array.markers)
 
 
-		goal_pick_3 = PoseStamped()
-		goal_pick_3.header.frame_id = 'map'
-		goal_pick_3.header.stamp = self.navigator.get_clock().now().to_msg()
-		goal_pick_3.pose.position.x = goal3_coordinates[0]
-		goal_pick_3.pose.position.y = goal3_coordinates[1]
-		goal_pick_3.pose.orientation.x = goal_theta_3[0]
-		goal_pick_3.pose.orientation.y = goal_theta_3[1]
-		goal_pick_3.pose.orientation.z = goal_theta_3[2]
-		goal_pick_3.pose.orientation.w = goal_theta_3[3]
+		while rclpy.ok():
 
+			user_input = input("Enter any string to append current odom data (or 'exit' to quit): ")
 
+			found_entry = None
+			for entry in data_dict['odometry_data']:
+				
+				if user_input == entry['place']:
+					found_entry = entry
+					break
+			
+			if found_entry:
 
-		# Define other drop goals...
+				orientation_yaw = found_entry['pose']['orientation']['yaw']
+				position_x = found_entry['pose']['position']['x']
+				position_y = found_entry['pose']['position']['y']
+			
+				print(f"Found place: {user_input}")
+				print(f"Position: ({position_x}, {position_y})")
+				self.navigator.waitUntilNav2Active()
 
-		self.navigator.waitUntilNav2Active()
-		self.navigator.goToPose(goal_pick_1)
-		self.nav_reach(goal_list[0])
+				goal = PoseStamped()
+				goal.header.frame_id = 'map'
+				goal.header.stamp = self.navigator.get_clock().now().to_msg()
+				goal.pose.position.x = position_x
+				goal.pose.position.y = position_y
+				goal.pose.orientation.x = self.nav_theta(orientation_yaw)[0]
+				goal.pose.orientation.y = self.nav_theta(orientation_yaw)[1]
+				goal.pose.orientation.z = self.nav_theta(orientation_yaw)[2]
+				goal.pose.orientation.w = self.nav_theta(orientation_yaw)[3]
+				self.navigator.goToPose(goal)
+				self.nav_reach(goal)
+			else:
+				print(f"No entry found for place: {user_input}")
 
-		self.navigator.goToPose(goal_pick_2)
-		self.nav_reach(goal_list[1])
-		
-		self.navigator.goToPose(goal_pick_3)
-		self.nav_reach(goal_list[2])
-
-		exit(0)
 
 if __name__ == '__main__':
 	nav_controller = NavigationController()
