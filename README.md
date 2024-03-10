@@ -57,6 +57,11 @@ docker exec -it <Containter_ID_From_Above> bash
    ```bash
 ros2 run islington_nav2 my_odom.py
 ```
+## To display marker on map
+
+   ```bash
+ros2 run islington_nav2 marker.py
+```
 
 ## To run point-to-point navigation run this
 

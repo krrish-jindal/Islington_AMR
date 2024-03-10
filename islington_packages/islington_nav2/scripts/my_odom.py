@@ -49,17 +49,26 @@ class OdomSubscriber(Node):
 			}
 			
 			self.odom_data.append(odom_dict)
+			print(self.odom_data)
 			self.get_logger().info(f"Saved odometry data for label '{user_input}'")
 		else:
 			pass
 
 
-
 	def save_odom_data(self, file_path):
-		print(file_path)
-		with open(file_path, 'a') as yaml_file:
-			yaml.dump({'odometry_data': self.odom_data}, yaml_file, default_flow_style=False)
+		existing_data = {}
+		if os.path.exists(file_path):
+			with open(file_path, 'r') as yaml_file:
+				existing_data = yaml.safe_load(yaml_file)
 
+		if 'odometry_data' not in existing_data:
+			existing_data={'odometry_data': self.odom_data}
+		else:
+			existing_data['odometry_data'].extend(self.odom_data)
+
+		with open(file_path, 'w') as yaml_file:
+			yaml.dump(existing_data, yaml_file, default_flow_style=False)
+			
 def main(args=None):
 	rclpy.init(args=args)
 

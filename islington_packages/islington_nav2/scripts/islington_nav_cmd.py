@@ -97,7 +97,7 @@ class NavigationController(Node):
 
 		while rclpy.ok():
 
-			user_input = input("Enter any string to append current odom data (or 'exit' to quit): ")
+			user_input = input("Enter any place: ")
 
 			found_entry = None
 			for entry in data_dict['odometry_data']:

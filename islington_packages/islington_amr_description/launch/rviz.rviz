@@ -6,13 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /RobotModel1
-        - /TF1
         - /TF1/Frames1
-        - /LaserScan1
-        - /Path1
         - /Path1/Topic1
         - /Path1/Offset1
+        - /Marker1
       Splitter Ratio: 0.5
     Tree Height: 729
   - Class: rviz_common/Selection
@@ -290,6 +287,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /global_costmap/published_footprint
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /visualization_marker
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -336,16 +346,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 36.700904846191406
+      Distance: 27.825841903686523
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.9583868980407715
-        Y: 0.523111879825592
-        Z: 0.02915780432522297
+        X: 0.7294560670852661
+        Y: 0.37177664041519165
+        Z: 0.02793615311384201
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
